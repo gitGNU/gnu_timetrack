@@ -1,0 +1,29 @@
+2011-07-18	Patrik Willard	<patrik.willard@padowi.se>
+	* Added GFDL documentation license
+
+2011-06-04	Patrik Willard	<patrik.willard@padowi.se>
+	* Renamed timetrack to ttrack
+	* Renamed timestats to tstats
+	* Updated timetrack syntax to version 1.1
+	* Created conversion script, tconv10to11, to update timetrack files to
+	  syntax version 1.1
+	* Updated example-addon/breakdown.sh, is now operational
+
+2011-05-20	Patrik Willard	<patrik.willard@padowi.se>
+	* timesummer renamed to timestats
+
+2011-05-16	Patrik Willard	<patrik.willard@padowi.se>
+	* Updated example-addon/cost.sh, will now determine for itself wheter it
+	  should be activated or not, depending on whether variable
+	  COST_RATE_TIMETACK is set or not
+
+2011-05-15	Patrik Willard	<patrik.willard@padowi.se>
+	* Updated timesummer, improved the "add-ons" infrastructure
+	* Updated example-addon/cost.sh, now works with improved "add-ons"
+	  infrastructure
+
+2011-05-12	Patrik Willard	<patrik.willard@padowi.se>
+	* Updated timesummer, now supports configuration file (global and project
+	  specific)
+	* Updated timesummer, now supports "add-ons" (script hooks) as described
+	  here: <http://www.turnkeylinux.org/blog/generic-shell-hooks>

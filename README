@@ -1,0 +1,61 @@
+                                   timetrack
+
+ttrack and tstats are two scripts designed to aid in keeping a track of
+time spent on various projects.
+
+
+                                   LICENSING
+
+Please refer to the file COPYING inside the subdirectories doc/ and src/ to find
+relevant licensing information for the files contained in these directories, and
+their subdirectories.
+
+                                     ttrack
+
+ttrack operates by creating a file in $PWD named ".timetrack.$USER" (if it
+doesn't already exist) and then append datetime information to the file.
+
+The datetime data is stored in the following format "YYYY-MM-DD HH:MM"
+Each completed session consist of two such datetime pieces, separated by " - ".
+
+A line containing a single datetime piece is considered an open session,
+whereupon the next call to the ttrack script will close that session and
+calculate the duration, at which time the script will also ask the user for a
+short summary of what activities has been undertaken during the session.
+
+When the session description and session duration has been derived, it too is
+appended onto a new line directly following the now closed session.
+
+                                   tstats
+
+tstats works on these derived lines, focussing only on the time passed,
+summing it up.
+
+tstats, however, provides a flexible add-on system, and some
+configurability.
+
+One can write shell scripts to extend the capabilities of tstats, the
+available variables being $OUTPUT (May ONLY be APPENDED to, NEVER OVERWRITTEN),
+$HOURS (MUST NOT be modified, read only) and $MINUTES (same as $hours)
+
+The $OUTPUT variable contains the message sent to STDOUT and it is vital that
+a script does not truncate this variable.
+
+tstats will look for extension scripts in "${HOME}/.timetrack.d/" and will
+look for configuration files in ${HOME}/.timetrack.rc (first) and then also in
+the project folder (either given as path to tstats ($1) or by having
+tstats called from the correct directory. (In both cases, the project path
+will be stored in $TTD, thus tstats will finally optionally also include
+${TTD}/.timetrack.rc
+
+This way we can have global variables which will be true for all projects, and
+can have project specific values overwrite the correct variables (as of yet the
+only variable available is $OUTPUT)
+
+However, an example of an add-on will be bundled, named cost.sh, which
+introduces the variable RATE, which the user should specify in the
+configuration, and which should reflect his/her hourly salary.
+
+
+
+

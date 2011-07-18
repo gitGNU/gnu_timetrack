@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# Copyright (C) 2011 Patrik Willard
+# 
+# This file is part of timetrack
+#
+# timetrack is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 3
+# of the License, or any later version.
+#
+# timetrack is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with timetrack; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Boston,
+# MA  02110-1301, USA.
+
+# check if there is a file to use
+if [ "$#" -eq 0 ];
+then
+    # no path specified, is there a file in PWD?
+    if [ -f "${PWD}/.timetrack.${USER}" ];
+    then
+        TTF="${PWD}/.timetrack.${USER}"
+    else
+        echo "No path specified, and no file in ${PWD}, exiting..."
+        exit 1
+    fi
+else
+    # path specified, does it work?
+    if [ -f "$1" ];
+    then
+        TTF="$1"
+    else
+        echo "ERROR: Supplied path ($1) is not a valid file"
+        exit 1
+    fi
+fi
+
+major=1
+minor=1
+
+header="$(head -n1 $TTF)"
+
+# is this file eligible for syntax update?
+versionLine=$(grep '## Syntax version' $TTF)
+
+# if we don't enter this if, there is NO syntax data,
+# indicating an early version
+if [ "$?" -eq 1 ];
+then
+    header="${header}\n## Syntax version ${major}.${minor}"
+else
+    # further investigation needed
+    strVersion="$(echo $versionLine | awk '{ print $NF }' | tr -d '.')"
+
+    if [ "${strVersion}" -ge "${major}${minor}" ];
+    then
+        # DON'T mess with later version syntax
+        exit 0
+    fi
+    header="${header}\n${versionLine}"
+fi
+
+sed -i 's/# \(.\+\) \([0-9hmin]\+\)/# <<<\1>>> \2/' "$TTF"
+
+echo -e "${header}" > "/tmp/$$"
+
+grep -A 1 '^20' "$TTF" | while read line;
+do
+    echo "$line" | grep -q '^20';
+    if [ "$?" -eq 0 ];
+    then
+        tags="$(date -d $(echo $line | cut -d' ' -f 1) +"#%Y #%b")"
+        echo $line >> "/tmp/$$"
+    else
+        echo "$line" | sed "s/^# \(.\+\)$/# $tags \1/" >> "/tmp/$$"
+    fi;
+done
+
+mv "/tmp/$$" "$TTF"
+
+exit 0

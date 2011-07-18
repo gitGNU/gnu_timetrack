@@ -1,0 +1,157 @@
+#!/bin/bash
+
+# Copyright (C) 2011 Patrik Willard
+# 
+# This file is part of timetrack
+#
+# timetrack is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 3
+# of the License, or any later version.
+#
+# timetrack is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with timetrack; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Boston,
+# MA  02110-1301, USA.
+
+function usage
+{
+    echo "USAGE: $0 [/path/to/timetrack/file]"
+    exit 1
+}
+
+function initialize
+{
+    # including global timetrack settings (if any)
+    if [ -f "${HOME}/.timetrack.rc" ];
+    then
+        source "${HOME}/.timetrack.rc"
+    fi
+
+    # including local timetrack settings (if any)
+    TTD="$(dirname $TTF)"
+    if [ -f "${TTD}/.timetrack.rc" ];
+    then
+        source "${TTD}/.timetrack.rc"
+    fi
+
+    if [ -d "${HOME}/.timetrack.d" ];
+    then
+        for script in ${HOME}/.timetrack.d/*;
+        do
+            source "$script"
+        done
+    fi
+
+    INITIALIZERS=($(compgen -A function | grep '_timetrack_init$'))
+    PROCS=($(compgen -A function | grep '_timetrack_proc$'))
+    POSTPROCS=($(compgen -A function | grep '_timetrack_postproc$'))
+    PRESENTERS=($(compgen -A function | grep '_timetrack_presenter'))
+
+    for tmpfn in ${INITIALIZERS[@]};
+    do
+        $tmpfn
+    done
+}
+
+function string_to_hours
+{
+    tmpHours="$(echo $1 | grep -P -o '^\d+')"
+}
+
+function string_to_minutes
+{
+    tmpMinutes="$(echo $1 | grep -P -o 'h\d+' | tr -d 'h')"
+}
+
+function minutes_to_hours
+{
+    tmpHours="$1"
+    tmpMinutes="$2"
+    while true;
+    do
+        if [ "$tmpMinutes" -gt 59 ];
+        then
+            tmpHours="$(( ${tmpHours} + 1 ))"
+            tmpMinutes="$(( ${tmpMinutes} - 60 ))"
+        else
+            break
+        fi
+    done
+}
+
+if [ "$#" -ne 1 ];
+then
+    # no parameters given
+    if [ ! -f "${PWD}/.timetrack.${USER}" ];
+    then
+        # no parameter, and no file
+        # print usage and exit
+        usage
+    else
+        # use the file in the $PWD
+        TTF="${PWD}/.timetrack.${USER}"
+    fi
+else
+    # use parameter
+    TTF="$1"
+fi
+
+initialize
+
+HOURS=0
+MINUTES=0
+
+while read line;
+do
+    echo "$line" | grep -q '^##'
+    if [ "$?" -eq 0 ];
+    then
+        continue
+    fi
+
+    echo "$line" | grep -q '^20'
+    if [ "$?" -eq 0 ];
+    then
+        TMP_DATE_LINE="$line"
+        continue
+    fi
+
+    TMP_MIXED_LINE="$line"
+    tmpTime="$(echo $TMP_MIXED_LINE | awk '{ print $NF }')"
+
+    string_to_hours "$tmpTime"
+    string_to_minutes "$tmpTime"
+
+    HOURS=$(( ${HOURS} + $tmpHours ))
+    MINUTES=$(( ${MINUTES} + $tmpMinutes ))
+
+    for tmpfn in ${PROCS[@]};
+    do
+        $tmpfn
+    done
+done < "$TTF"
+
+minutes_to_hours "$HOURS" "$MINUTES"
+HOURS="$tmpHours"
+MINUTES="$tmpMinutes"
+
+for tmpfn in ${POSTPROCS[@]};
+do
+    $tmpfn
+done
+
+OUTPUT="Time spent: ${HOURS} hours, and ${MINUTES} minutes"
+
+for tmpfn in ${PRESENTERS[@]};
+do
+    $tmpfn
+done
+
+echo -e "$OUTPUT"
+exit 0

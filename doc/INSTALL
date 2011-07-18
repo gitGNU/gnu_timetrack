@@ -1,0 +1,31 @@
+                           Installation instructions
+
+Copyright (c)  2011 Patrik Willard.
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.1
+or any later version published by the Free Software Foundation;
+with no Invariant Sections, with no Front-Cover Texts, 
+and with no Back-Cover Texts.
+A copy of the license is included in the section entitled "GNU
+Free Documentation License".
+
+Copy ttrack and tstats to a directory which is in the $PATH
+( "${HOME}/bin/" is usually a good place, /usr/local/bin will work if you have
+sufficient permissions to install there )
+
+IFF you have been using timetrack before 2011-06-04, you should also copy
+tconv10to11 and execute it in every directory containing a timetrack file.
+
+Optionally create the file "${HOME}/.timetrack.rc"
+
+Optionally create the directory "${HOME}/.timetrack.d/" and copy the file
+"cost.sh" found in the "example-addon/" directory here.
+
+timestats will ignore any and all scripts in the .timetrack.d directory that
+aren't executable, so to activate or deactivate a certain add-on, toggle it's
+executable flag.
+
+Optionally create a separate ".timetrack.rc" file in every project directory
+where you wish to change the configuration on a per project basis.
+
+See README for configuration options and add-on functionality

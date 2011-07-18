@@ -1,0 +1,194 @@
+#!/bin/bash
+
+# Copyright (C) 2011 Patrik Willard
+# 
+# This file is part of timetrack
+#
+# timetrack is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 3
+# of the License, or any later version.
+#
+# timetrack is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with timetrack; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Boston,
+# MA  02110-1301, USA.
+
+function get_version {
+    version="1.1"
+}
+
+function get_date {
+    tmpDate=$(date +"%Y-%m-%d %H:%M")
+}
+
+function start_session_interrogative {
+    echo "Would you like to start a new session? [y/N]"
+    read answer
+    case "$answer" in
+        y ) start_session;
+            exit 0;;
+
+        * ) exit 0;;
+    esac
+}
+
+function start_session {
+    get_date
+    echo "$tmpDate" >> $TTF
+}
+
+function get_last_line {
+    last_line="$(tail -n 1 $TTF)"
+}
+
+function end_session_interrogative {
+    echo "Would you like to end the current session? [y/N]"
+    read answer
+    case "$answer" in
+        y ) end_session;
+            exit 0;;
+
+        * ) exit 0;;
+    esac
+}
+
+function end_session {
+    get_last_line
+    get_date
+    line="$last_line - $tmpDate"
+    echo "$(head -n -1 $TTF)" >> "/tmp/$$"
+    echo "$line" >> "/tmp/$$"
+    mv "/tmp/$$" "$TTF"
+
+    calculate_time
+}
+
+function create_header {
+    get_version
+    echo "## Timetracking file for ${USER}" >> "$TTF"
+    echo "## Syntax version ${version}" >> "$TTF"
+}
+
+function calculate_time {
+    get_last_line
+
+    past=$(echo $last_line | grep -P -o '^\d+-\d+-\d+ \d+:\d+')
+    present=$(echo $last_line | grep -P -o '\d+-\d+-\d+ \d+:\d+$')
+
+    hours=0
+    minutes=0
+
+    seconds=$(($(date -d "$present" +"%s")-$(date -d "$past" +"%s")))
+
+    while true;
+    do
+        if [ "$seconds" -gt 59 ];
+        then
+            minutes=$((${minutes}+1))
+            seconds=$((${seconds}-60))
+        else
+            break
+        fi
+    done
+
+    if [ "$minutes" -gt 59 ];
+    then
+        while true;
+        do
+            if [ "$minutes" -gt 59 ];
+            then
+                hours=$((${hours}+1))
+                minutes=$((${minutes}-60))
+            else
+                break
+            fi
+        done
+    fi
+
+    output="${hours}h${minutes}min"
+
+    tags="$(date +"#%Y #%b")"
+    tag=0
+
+    while [ "$tag" != "" ];
+    do
+        echo "Add a tag (empty line quits tagging):"
+        read tag
+        if [ "$tag" != "" ];
+        then
+            tags="${tags} #${tag}"
+        fi
+    done
+
+    echo "What have you been working on? (Short answer please)"
+    read topic
+
+    echo "# ${tags} <<<${topic}>>> ${output}" >> $TTF
+}
+
+if [ "$#" -eq 0 ];
+then
+    # no path specified, is there a file in PWD?
+    if [ -e "${PWD}/.timetrack.${USER}" ];
+    then
+        TTF="${PWD}/.timetrack.${USER}"
+    else
+        echo "NOTICE: You have supplied no path, and no default file exist in this directory"
+        echo "Would you like to create a timetrack file in this directory? (y/N)"
+
+        read choice
+        case "$choice" in
+            y ) TTF="${PWD}/.timetrack.${USER}"; touch "$TTF";
+                create_header; start_session_interrogative;
+                exit 0;;
+
+            * ) echo "Goodbye";
+                exit 1;;
+        esac
+    fi
+else
+    # path specified, does it work?
+    if [ -e "$1" ];
+    then
+        TTF="$1"
+    else
+        echo "ERROR: Supplied path ($1) is not a valid file"
+        exit 1
+    fi
+fi
+
+# we have a working file, get last line to determine what, 
+# if anything, should be done
+get_last_line
+echo "$last_line" | grep -q '^#'
+if [ "$?" -eq 0 ];
+then
+    # last line was a summary of previous session
+    # should we start a new session?
+    start_session_interrogative
+else
+    # last line wasn't a summary, determine if
+    # we are dealing with an open session
+    echo $last_line | grep -q ' - '
+    if [ "$?" -eq 0 ];
+    then
+        # session has ended, but strangely no summary
+        # has been added... add it, and since the session
+        # had ended, and we're running this script, do we
+        # wish to start a new session?
+        calculate_time
+        start_session_interrogative
+    else
+        # session had not ended, but we are running the script
+        # do we want to end it?
+        end_session_interrogative
+    fi
+fi
+
+exit 0
